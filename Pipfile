@@ -5,6 +5,7 @@ name = "pypi"
 
 [packages]
 tf-nightly = "*"
+pandas = "*"
 
 [dev-packages]
 

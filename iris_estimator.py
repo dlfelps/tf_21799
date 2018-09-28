@@ -104,7 +104,7 @@ def main(unused_argv):
   test_input_fn = input_fn(IRIS_TEST, num_test_data, batch_size=30,
                            is_training=False)
   scores = classifier.evaluate(input_fn=test_input_fn)
-  print('Accuracy (tensorflow): {0:f}'.format(scores['accuracy']))
+  print('Accuracy (estimator): {0:f}'.format(scores['accuracy']))
 
 
 if __name__ == '__main__':

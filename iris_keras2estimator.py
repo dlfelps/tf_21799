@@ -79,6 +79,8 @@ def input_fn(file_name, num_data, batch_size, is_training):
       dataset = dataset.repeat()
 
     dataset = dataset.batch(batch_size)
+    iterator = dataset.make_one_shot_iterator()
+    features, labels = iterator.get_next()
     return dataset
 
   return _input_fn
@@ -107,21 +109,19 @@ def main(unused_argv):
   classifier = tf.keras.Model(inputs=[input_0, input_1, input_2, input_3], outputs=[output])
   classifier.compile(optimizer='sgd', loss='sparse_categorical_crossentropy')
 
+  # Convert to estimator
+  estimator = tf.keras.estimator.model_to_estimator(keras_model=classifier, model_dir='model_dir')
+
   # Train.
   train_input_fn = input_fn(IRIS_TRAINING, num_training_data, batch_size=32,
                             is_training=True)
-  classifier.fit(train_input_fn(), steps_per_epoch=400, epochs=1)
+  estimator.train(input_fn=train_input_fn, steps=400)
 
   # Eval.
   test_input_fn = input_fn(IRIS_TEST, num_test_data, batch_size=30,
                            is_training=False)
-  y_prob = classifier.predict_on_batch(test_input_fn())
-  y_pred = np.argmax(y_prob, axis=1)
-
-  test = pd.read_csv('iris_test.csv', names=['sepal_length', 'sepal_width', 'petal_length', 'petal_width', 'species'], header=0)
-  _, y_truth = test, test.pop('species')
-
-  print('Accuracy (keras): {0:f}'.format(sum(np.equal(y_pred, y_truth))/30))
+  scores = estimator.evaluate(input_fn=test_input_fn)
+  print('Accuracy (estimator): {0:f}'.format(scores['accuracy']))
 
 
 if __name__ == '__main__':
