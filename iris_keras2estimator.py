@@ -60,7 +60,7 @@ def input_fn(file_name, num_data, batch_size, is_training):
     num_columns = num_features + 1
     columns = tf.decode_csv(rows_string_tensor,
                             record_defaults=[[]] * num_columns)
-    features = dict(zip(FEATURE_KEYS, columns[:num_features]))
+    features = columns[:num_features]
     labels = tf.cast(columns[num_features], tf.int32)
     return features, labels
 
@@ -81,7 +81,7 @@ def input_fn(file_name, num_data, batch_size, is_training):
     dataset = dataset.batch(batch_size)
     iterator = dataset.make_one_shot_iterator()
     features, labels = iterator.get_next()
-    return dataset
+    return features, labels
 
   return _input_fn
 
@@ -94,11 +94,7 @@ def main(unused_argv):
   num_test_data = maybe_download_iris_data(IRIS_TEST, IRIS_TEST_URL)
 
   # Build 3 layer DNN with 10, 20, 10 units respectively.
-  input_0 = tf.keras.Input(batch_shape=(None, 1), name=FEATURE_KEYS[0])
-  input_1 = tf.keras.Input(batch_shape=(None, 1), name=FEATURE_KEYS[1])
-  input_2 = tf.keras.Input(batch_shape=(None, 1), name=FEATURE_KEYS[2])
-  input_3 = tf.keras.Input(batch_shape=(None, 1), name=FEATURE_KEYS[3])
-  input = tf.keras.layers.concatenate([input_0, input_1, input_2, input_3], axis=1)
+  input = tf.keras.Input(batch_shape=(None, 4))
 
   x = tf.keras.layers.Dense(10, activation='relu')(input)
   x = tf.keras.layers.Dense(20, activation='relu')(x)
@@ -106,11 +102,11 @@ def main(unused_argv):
 
   output = tf.keras.layers.Dense(3, activation='softmax')(x)
 
-  classifier = tf.keras.Model(inputs=[input_0, input_1, input_2, input_3], outputs=[output])
-  classifier.compile(optimizer='sgd', loss='sparse_categorical_crossentropy')
+  classifier = tf.keras.Model(inputs=[input], outputs=[output])
+  classifier.compile(optimizer='sgd', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
 
   # Convert to estimator
-  estimator = tf.keras.estimator.model_to_estimator(keras_model=classifier, model_dir='model_dir')
+  estimator = tf.keras.estimator.model_to_estimator(keras_model=classifier)
 
   # Train.
   train_input_fn = input_fn(IRIS_TRAINING, num_training_data, batch_size=32,
@@ -121,7 +117,7 @@ def main(unused_argv):
   test_input_fn = input_fn(IRIS_TEST, num_test_data, batch_size=30,
                            is_training=False)
   scores = estimator.evaluate(input_fn=test_input_fn)
-  print('Accuracy (estimator): {0:f}'.format(scores['accuracy']))
+  print('Accuracy (keras -> estimator): {0:f}'.format(scores['accuracy']))
 
 
 if __name__ == '__main__':
